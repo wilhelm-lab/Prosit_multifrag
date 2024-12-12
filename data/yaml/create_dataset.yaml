@@ -1,0 +1,17 @@
+method:
+  - ECD
+  - EID
+  - UVPD
+  - HCD
+peaks_min: 1
+criteria:
+  - '"p" not in ion'
+  - 'counts>100'
+#  - '"a" not in ion'
+#  - '"c" not in ion'
+#  - '"x" not in ion'
+#  - '"X" not in ion'
+#  - '"Z" not in ion'
+counts_path: /cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/allinone/ion_counts.tab
+n_shards: 8
+

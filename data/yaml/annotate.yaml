@@ -1,0 +1,16 @@
+frag_method: HCD
+frags_searched: cemil_frags # Fragments Nikita searched with
+ion_types: # Fragments I annotate
+  - a
+  - A
+  - b
+  - c
+  - C
+  - x
+  - X
+  - y
+  - z
+  - Z
+max_peptide_length: 30
+max_product_charge: 3
+fixed_cysteine_cam: True
