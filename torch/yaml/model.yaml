@@ -13,6 +13,6 @@ depth: 6
 prec_type: 'preembed' # preembed | pretoken
 prec_units: 256
 use_charge: True
-use_energy: True
+use_energy: False
 use_method: True
-final_act: 'identity'
+final_act: 'identity' # sigmoid | identity | linear

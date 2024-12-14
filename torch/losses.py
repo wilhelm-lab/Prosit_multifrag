@@ -79,3 +79,12 @@ def masked_pearson_correlation_distance(y_true, y_pred):
     r_num = (xm * ym).mean(1, keepdim=False) #tf.math.reduce_mean(tf.multiply(xm, ym))
     r_den = xm.std(1, keepdim=False) * ym.std(1, keepdim=False) #tf.math.reduce_std(xm) * tf.math.reduce_std(ym)
     return 1 - (r_num / r_den)
+
+def cosine_score(y_true, y_pred, sqrt=True):
+    # correct loader setting -1 for impossible ions
+    mask = y_true < 0
+    y_true[mask] = 0
+    if sqrt:
+        y_true = th.sqrt(y_true)
+        y_pred = th.sqrt(y_pred)
+    return -th.nn.functional.cosine_similarity(y_true, y_pred)

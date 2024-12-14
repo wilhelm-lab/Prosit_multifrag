@@ -67,8 +67,23 @@ if (len(sys.argv)==1) and master_config['log_wandb']:
 #                Loss function                   #
 ##################################################
 
-from losses import masked_spectral_distance as loss_function
-from losses import masked_pearson_correlation_distance as eval_function
+from losses import cosine_score, masked_spectral_distance
+from losses import masked_pearson_correlation_distance
+all_losses = {
+    'cosine_score': cosine_score, 
+    'masked_spectral_distance': masked_spectral_distance
+}
+assert master_config['loss_function'] in all_losses.keys(), (
+    f"{master_config['loss_function']} not available"
+)
+loss_function = all_losses[master_config['loss_function']]
+all_evals = {
+    'pearson': masked_pearson_correlation_distance
+}
+assert master_config['eval_function'] in all_evals.keys(), (
+    f"{master_config['eval_function']} not available"
+)
+eval_function = all_evals[master_config['eval_function']]
 
 ##################################################
 #                  Train step                    #
@@ -110,6 +125,7 @@ def evaluation(dset='val', save_df=False):
     
     sum_instances = 0
     sum_loss = 0
+    eval_score_ = 0
     total_eval_steps = dobj.sizes[dset] // master_config['batch_size']
     for step, batch in enumerate(dobj.dataloader[dset]):
         print("\rEvaluation batch %d/%d"%(step, total_eval_steps), end=50*" ")
@@ -128,6 +144,8 @@ def evaluation(dset='val', save_df=False):
 
         loss = loss_function(y_true=batchdev['intensity'], y_pred=prediction)
         sum_loss += loss.sum().item()
+        eval_score = eval_function(batchdev['intensity'], prediction)
+        eval_score_ += eval_score.sum().item()
 
         if save_df:
             #C = list(map(lambda x: "".join([dobj.revdic[m] for m in x if m!=dobj.amod_dic['X']]), batch['intseq'].cpu().tolist()))
@@ -137,8 +155,8 @@ def evaluation(dset='val', save_df=False):
                 'modified_sequence': batch['modified_sequence'],
                 'charge': batch['charge'].cpu().tolist(),
                 'energy': batch['ce'].cpu().tolist(),
-                'loss': loss.cpu().tolist(),
-                'pearson': (1-eval_function(batchdev['intensity'], prediction)).cpu().tolist(),
+                master_config['loss_function']: loss.cpu().tolist(),
+                'pearson': (1-eval_score).cpu().tolist(),
                 'peptide_length': (batch['intseq']!=23).sum(1).cpu().tolist(),
                 'num_peaks': (batch['intensity']>0).sum(1).cpu().tolist(),
                 'predicted_intensities': (prediction/prediction.max(1, keepdims=True)[0]).cpu().tolist(),
@@ -148,7 +166,8 @@ def evaluation(dset='val', save_df=False):
             df = pd.concat([df, pd.DataFrame(A)])
 
     return {
-        'mean_loss': sum_loss / sum_instances,
+        'train_loss': sum_loss / sum_instances,
+        'eval_score': eval_score_ / sum_instances,
         'dataframe': df,
     }
 
@@ -181,9 +200,9 @@ def train(epochs=1, runlen=50, svfreq=3600):
     warmup = np.linspace(1e-7, master_config['lr'], master_config['warmup_steps'])
     
     # First eval
-    eval_loss = evaluation()['mean_loss']
-    top_eval_loss = eval_loss
-    if master_config['log_wandb']: wandb.log({'Validation loss': eval_loss})
+    evals = evaluation()
+    top_eval_loss = evals['train_loss']
+    if master_config['log_wandb']: wandb.log({'Validation loss': evals['eval_score']})
 
     # Train
     running_time = deque(maxlen=runlen) # Full time
@@ -259,15 +278,15 @@ def train(epochs=1, runlen=50, svfreq=3600):
             break
         
         # Evaluation
-        eval_loss = evaluation()['mean_loss']
-        Line = "Validation loss at epoch %d: %.6f\n"%(epoch, eval_loss)
-        if master_config['log_wandb']: wandb.log({'Validation loss': eval_loss, 'Epoch': epoch})
+        evals = evaluation()
+        Line = "Validation loss at epoch %d: %.6f\n"%(epoch, evals['eval_score'])
+        if master_config['log_wandb']: wandb.log({'Validation loss': evals['eval_score'], 'Epoch': epoch})
         if swt:
             weight_files = os.listdir(os.path.join(svdir, "weights"))
-            if eval_loss < top_eval_loss:
+            if evals['train_loss'] < top_eval_loss:
                 for file in weight_files: os.remove(os.path.join(svdir, "weights", file))
-                U.save_full_model(model, None, svdir, ext='epoch%d_%.4f'%(epoch, eval_loss))
-                top_eval_loss = eval_loss
+                U.save_full_model(model, None, svdir, ext='epoch%d_%.4f'%(epoch, evals['train_loss']))
+                top_eval_loss = evals['train_loss']
             U.save_full_model(model, opt, svdir, ext='last')
         if msg:
             U.message_board(Line, "%s/epochout.txt"%svdir)
