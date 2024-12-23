@@ -19,10 +19,10 @@ def message_board(line, path):
     with open(path, 'a') as F:
         F.write(line)
 
-def save_full_model(model, optimizer, svdir, ext=''):
+def save_full_model(model, optimizer, svdir, ext='', state_dict_only=True):
     if model is not None:
         th.save(
-            model.state_dict(),
+            model.state_dict() if state_dict_only else model,
             "%s/weights/model_%s"%(svdir, ext)
         )
     if optimizer is not None:

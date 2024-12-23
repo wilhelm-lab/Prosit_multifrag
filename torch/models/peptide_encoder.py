@@ -159,6 +159,19 @@ class PeptideEncoder(nn.Module):
 
         return self.last(penultimate).mean(1)
 
+def PeptideEncoderModel(
+    final_units,
+    tokens,
+    max_charge,
+    kwargs,
+):
+    return PeptideEncoder(
+        tokens=tokens,
+        final_units=final_units,
+        max_charge=max_charge,
+        **kwargs
+    )
+
 #model = PeptideEncoder(running_units=512, tokens=28, max_charge=8)
 #sequence = th.randint(0, 28, (10, 30))
 #charge = th.randint(1, 8, (10,))

@@ -2,7 +2,8 @@ import torch as th
 import yaml
 from loader_hf import DobjHF
 from utils import tokenize_modified_sequence
-from models.peptide_encoder import PeptideEncoder
+from models.peptide_encoder import PeptideEncoderModel
+from models.prosit import PrositModel
 from losses import masked_spectral_distance
 import utils as U
 from collections import deque
@@ -35,11 +36,13 @@ dobj = DobjHF(**load_config)
 #                     Model                      #
 ##################################################
 
-model = PeptideEncoder(
+Model = PrositModel if master_config['model_type'] == 'prosit' else PeptideEncoderModel
+
+model = Model(
     tokens = len(dobj.amod_dic),
     final_units = len(dobj.ion_df),
     max_charge = load_config['charge'][-1],
-	**model_config
+	kwargs=model_config
 )
 model.to(device)
 total_parameters = sum([m.numel() for m in model.parameters() if m.requires_grad])

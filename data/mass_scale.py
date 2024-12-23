@@ -449,6 +449,63 @@ def tiebreak(TP, theoretical_df, real_mzs, thr=2e-2):
     assert(len(TP2)==len(uniqs))
     return TP1, TP2#, global_dels
 
+def my_annotation_function(psms, theor_dict, threshold_ppm=20, p_window=0):
+    ion_counts = {}
+    scale = Scale()
+    df = {
+        'ions': [], 'mz': [], 'int': [],  
+        'matched_inds': [], 'matched_ions': [], 'matched_ppm': [],
+    }
+    for seq, modseq, charge, raw_mz, raw_int, mass in zip(
+        psms['SEQUENCE'],
+        psms['MODIFIED_SEQUENCE'], 
+        psms['PRECURSOR_CHARGE'],
+        psms['MZ'],
+        psms['INTENSITIES'],
+        psms['MASS'],
+    ):
+        # Calculate theoretical spectrum
+        peptide_length = len(seq)
+        ions = theor_dict.query(f"length < {peptide_length} and charge <= {charge}")
+        theoretical_mz = np.array([scale.calcmass(modseq, charge, ion) for ion in ions.index])
+        
+        # Exclude all peaks with m/z between [p-p_window, p+p_window]
+        # - Create a mask to filter variables 'theoretical_mz' and 'ions'
+        if p_window > 0:
+            p = scale.calcmass(modseq, charge, 'p')
+            exclusion_mask = (theoretical_mz > (p + p_window)) | (theoretical_mz < (p - p_window))
+        else:
+            exclusion_mask = np.array(len(theoretical_mz)*[True])
+        theoretical_mz = theoretical_mz[exclusion_mask]
+        theor_df = pd.DataFrame({'ion': ions.index.to_numpy()[exclusion_mask], 'mz': theoretical_mz})
+        
+        # Match peaks
+        TP, FP, FN = scale.match(theoretical_mz, raw_mz, thr=threshold_ppm)
+        TP = tiebreak(TP, theor_df, raw_mz)
+        raw_mz_ = raw_mz[TP[1]]
+        raw_int_ = raw_int[TP[1]]
+        theoretical_mz_ = theoretical_mz[TP[0]]
+        ppm = 1e6 * (raw_mz_ - theoretical_mz_) / theoretical_mz_
+        matched_ions = ions.index.to_numpy()[exclusion_mask][TP[0]]
+        
+        # Collect results
+        df['ions'].append(matched_ions)
+        df['mz'].append(raw_mz_)
+        df['int'].append(raw_int_)
+        df['matched_inds'].append(TP[1])
+        df['matched_ions'].append(matched_ions)
+        df['matched_ppm'].append(ppm)
+        
+        for I in matched_ions:
+            if I not in ion_counts:
+                ion_counts[I] = 0
+            ion_counts[I] += 1
+
+    return {
+        'dataframe': pd.DataFrame(df),
+        'statistics': ion_counts,
+    }
+
 if __name__ == '__main__':
     scale = Scale()
     
