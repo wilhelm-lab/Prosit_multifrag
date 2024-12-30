@@ -209,6 +209,16 @@ class MetaDataFusionLayer(nn.Module):
         x = x.unsqueeze(1).repeat(1, self.max_ion, 1)
         return x
 
+class MetaDataFusionLayer2(nn.Module):
+    def __init__(self, *args):
+        super(MetaDataFusionLayer2, self).__init__()
+
+    def forward(self, x, encoded_meta):
+        # x: bs, sl, units
+        # encoded_meta: bs, units
+        x = x * encoded_meta[:, None]
+        return x
+
 class SequenceEncoder(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, dropout_rate):
         super(SequenceEncoder, self).__init__()
@@ -321,11 +331,11 @@ class TorchPrositIntensityPredictor(nn.Module):
             num_methods=num_methods,
         ) if self.atleast1 else None
 
-        self.attention = TorchAttentionLayer(input_shape=(1, seq_length, recurrent_layers_sizes[1]))
+        #self.attention = TorchAttentionLayer(input_shape=(1, seq_length, recurrent_layers_sizes[1]))
 
-        self.meta_data_fusion_layer = MetaDataFusionLayer(self.max_ion)
+        self.meta_data_fusion_layer = MetaDataFusionLayer2(self.max_ion)
 
-        self.decoder = Decoder(regressor_layer_size, self.max_ion, dropout_rate)
+        self.decoder = Decoder(regressor_layer_size, seq_length, dropout_rate)
 
         self.regressor = Regressor2(regressor_layer_size, final_units)
 
@@ -335,7 +345,7 @@ class TorchPrositIntensityPredictor(nn.Module):
         
         x = self.embedding(intseq)
         x = self.sequence_encoder(x)
-        x = self.attention(x)
+        #x = self.attention(x)
         
         encoded_meta = self.meta_encoder(charge, energy, method) if self.atleast1 else None
         if self.meta_data_fusion_layer and encoded_meta is not None:
@@ -379,7 +389,7 @@ def PrositModel(
 
 if __name__ == "__main__":
     # prepare dummy input data and labels
-    sequences = torch.randint(low=0, high=len(ALPHABET_UNMOD), size=(5,32))
+    sequences = torch.randint(low=0, high=len(ALPHABET_UNMOD), size=(5,30))
 
     random_charges = torch.randint(low=0, high=6, size=(5,))
     onehot_charges = F.one_hot(random_charges, num_classes=6).float()
@@ -400,9 +410,11 @@ if __name__ == "__main__":
         final_units=174,
         tokens=len(ALPHABET_UNMOD),
         max_charge=6,
-        use_charge=True,
-        use_energy=True,
-        use_method=False
+        kwargs={
+            'use_charge': True,
+            'use_energy': True,
+            'use_method': False
+        },
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
     output = model(**input_dict)
