@@ -1,5 +1,5 @@
 frag_method: HCD
-frags_searched: cemil_frags # Fragments Nikita searched with
+frags_searched: cemil_frags # Fragments searched with
 ion_types: # Fragments I annotate
   - a
   - A

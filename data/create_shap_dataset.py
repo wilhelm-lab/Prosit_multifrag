@@ -24,8 +24,7 @@ for seq, ce, charge, method in zip(df['modified_sequence'], df['energy'], df['ch
 with open("uvpd_shap_input.csv", 'w') as f:
     f.write("\n".join(lines))
 """
-
-df_ = df[['modified_sequence', 'energy', 'charge', 'method']]
+df_ = df[['modified_sequence', 'peptide_length', 'energy', 'charge', 'method']]
 df_.index = np.arange(len(df_))
 df_.loc[:, 'modified_sequence'] = df_['modified_sequence'].map(lambda x: tokenizer(x))
 df_.loc[:, 'full'] = pd.Series(
