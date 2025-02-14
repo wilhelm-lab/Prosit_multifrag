@@ -6,6 +6,7 @@ tokenizer: mine
 sequence_dictionary_path: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/token_dictionary.txt
 ion_counts_path: /cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/allinone/ion_counts.tab
 method_list: [ECD,EID,UVPD,HCD,CID,ETciD]
+instrument_list: [omnitrap, lumos]
 pep_length: [6, 30]
 charge: [1, 6]
 batch_size: 100

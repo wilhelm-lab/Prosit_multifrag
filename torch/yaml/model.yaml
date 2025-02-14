@@ -15,4 +15,5 @@ prec_units: 256
 use_charge: True
 use_energy: True
 use_method: True
+use_instrument: True
 final_act: 'sigmoid' # sigmoid | identity | linear

@@ -10,7 +10,15 @@ from mass_scale import select_ion_dictionary
 import yaml
 import pandas as pd
 
-def map_fn(example, tokenizer, sequence_dictionary, ion_dataframe, max_seq, method_dictionary=None):
+def map_fn(
+    example, 
+    tokenizer, 
+    sequence_dictionary, 
+    ion_dataframe, 
+    max_seq, 
+    method_dictionary=None, 
+    instrument_dictionary=None
+):
     #example['modified_sequence'] = th.tensor(example['modified_sequence'])
     tokenized_sequence = tokenizer(example['modified_sequence'])
     pad = (max_seq - len(tokenized_sequence))*['X']
@@ -20,6 +28,8 @@ def map_fn(example, tokenizer, sequence_dictionary, ion_dataframe, max_seq, meth
     example['ce'] = th.tensor(example['ce'], dtype=th.float32)
     if method_dictionary is not None:
         example['method'] = th.tensor(method_dictionary[example['method']], dtype=th.int32)
+    if instrument_dictionary is not None:
+        example['instrument'] = th.tensor(instrument_dictionary[example['instrument']], dtype=th.int32)
     intensity = th.zeros(len(ion_dataframe), dtype=th.float32)
     matched = ion_dataframe.loc[example['matched_ions']]
     intensity[matched['index'].tolist()] = th.tensor(example['intensity'], dtype=th.float32) / max(example['intensity'])
@@ -30,12 +40,15 @@ def map_fn(example, tokenizer, sequence_dictionary, ion_dataframe, max_seq, meth
 
 def collate_fn(batch_list, full=False):
     use_method = 'method' in batch_list[0]
+    use_instrument = 'instrument' in batch_list[0]
 
     intseq = th.stack([m['intseq'] for m in batch_list])
     charge = th.stack([m['charge'] for m in batch_list])
     ce = th.stack([m['ce'] for m in batch_list])
     if use_method:
         method = th.stack([m['method'] for m in batch_list])
+    if use_instrument:
+        instrument = th.stack([m['instrument'] for m in batch_list])
     intensity = th.stack([m['intensity'] for m in batch_list])
     
     out = {
@@ -46,6 +59,8 @@ def collate_fn(batch_list, full=False):
     }
     if use_method:
         out['method'] = method
+    if use_instrument:
+        out['instrument'] = instrument
     if full:
         out['modified_sequence'] = [m['modified_sequence'] for m in batch_list]
         out['raw_file'] = [m['raw_file'] for m in batch_list]
@@ -60,6 +75,7 @@ class DobjHF:
         sequence_dictionary_path: str=None,
         ion_counts_path: str=None,
         method_list: list=None,
+        instrument_list: list=None,
         top_pks: int=100,
         batch_size: int=100,
         num_workers: int=0,
@@ -81,6 +97,12 @@ class DobjHF:
             self.method_dicr = {n:m for m,n in self.method_dic.items()}
         else:
             self.method_dic = None
+
+        if instrument_list is not None:
+            self.instrument_dic = {instrument: m for m, instrument in enumerate(instrument_list)}
+            self.instrument_dicr = {n:m for m,n in self.instrument_dic.items()}
+        else:
+            self.instrument_dic = None
 
         # Output dictionary
         if ion_counts_path is not None:
@@ -126,6 +148,7 @@ class DobjHF:
                 ion_dataframe=self.ion_df,
                 max_seq=kwargs['pep_length'][1],
                 method_dictionary=self.method_dic,
+                instrument_dictionary=self.instrument_dic,
             ), 
             remove_columns=remove_columns
         )

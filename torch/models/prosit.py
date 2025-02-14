@@ -170,22 +170,27 @@ class MetaEncoder2(nn.Module):
         dropout_rate,
         use_charge=True, 
         use_energy=False, 
-        use_method=False, 
+        use_method=False,
+        use_instrument=False,
         max_charge=None, 
         num_methods=None,
+        num_instruments=None,
     ):
         super(MetaEncoder2, self).__init__()
         self.use_charge = use_charge
         self.use_energy = use_energy
         self.use_method = use_method
+        self.use_instrument = use_instrument
         self.max_charge = max_charge
         self.num_methods = num_methods
+        self.num_instruments = num_instruments
         input_size = max_charge if self.use_charge else 0
         input_size += 1 if self.use_energy else 0
         input_size += num_methods if self.use_method else 0
+        input_size += num_instruments if self.use_instrument else 0
         self.meta_encoder = MetaEncoder(input_size, recurrent_layer_size, dropout_rate)
 
-    def forward(self, charge=None, energy=None, method=None):
+    def forward(self, charge=None, energy=None, method=None, instrument=None):
         inputs = []
         if self.use_charge:
             charge_vector = F.one_hot(charge.long(), self.max_charge).float() # bs, max_charge
@@ -196,6 +201,9 @@ class MetaEncoder2(nn.Module):
         if self.use_method:
             method_vector = F.one_hot(method.long(), self.num_methods).float() # bs, num_methods
             inputs.append(method_vector)
+        if self.use_instrument:
+            instrument_vector = F.one_hot(instrument.long(), self.num_instruments).float() # bs, num_methods
+            inputs.append(instrument_vector)
         return self.meta_encoder(inputs)
 
 
@@ -295,8 +303,10 @@ class TorchPrositIntensityPredictor(nn.Module):
         use_charge=True,
         use_energy=False,
         use_method=True,
+        use_instrument=False,
         max_charge=6,
         num_methods=4,
+        num_instruments=2,
         dropout_rate=0.2, 
         latent_dropout_rate=0.1, 
         recurrent_layers_sizes=(256, 512),
@@ -314,7 +324,7 @@ class TorchPrositIntensityPredictor(nn.Module):
         self.use_prosit_ptm_features = use_prosit_ptm_features
 
         self.max_ion = seq_length - 3 if with_termini else seq_length - 1
-        self.atleast1 = use_charge or use_energy or use_method
+        self.atleast1 = use_charge or use_energy or use_method or use_instrument
 
         self.embedding = nn.Embedding(self.embeddings_count, self.embedding_output_dim)
 
@@ -327,8 +337,10 @@ class TorchPrositIntensityPredictor(nn.Module):
             use_charge=use_charge,
             use_energy=use_energy,
             use_method=use_method,
+            use_instrument=use_instrument,
             max_charge=max_charge+1,
             num_methods=num_methods,
+            num_instruments=num_instruments,
         ) if self.atleast1 else None
 
         #self.attention = TorchAttentionLayer(input_shape=(1, seq_length, recurrent_layers_sizes[1]))
@@ -341,13 +353,13 @@ class TorchPrositIntensityPredictor(nn.Module):
 
         self.global_step = nn.Parameter(torch.tensor(0), requires_grad=False)
 
-    def forward(self, intseq, charge=None, energy=None, method=None):
+    def forward(self, intseq, charge=None, energy=None, method=None, instrument=None):
         
         x = self.embedding(intseq)
         x = self.sequence_encoder(x)
         #x = self.attention(x)
         
-        encoded_meta = self.meta_encoder(charge, energy, method) if self.atleast1 else None
+        encoded_meta = self.meta_encoder(charge, energy, method, instrument) if self.atleast1 else None
         if self.meta_data_fusion_layer and encoded_meta is not None:
             x = self.meta_data_fusion_layer(x, encoded_meta)
         x = self.decoder(x)

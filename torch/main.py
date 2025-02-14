@@ -23,6 +23,8 @@ with open("yaml/model.yaml", "r") as f:
     model_config = yaml.safe_load(f)
 if load_config['method_list'] is not None:
     model_config['num_methods'] = len(load_config['method_list'])
+if load_config['instrument_list'] is not None:
+    model_config['num_instruments'] = len(load_config['instrument_list'])
 
 ##################################################
 #                   Dataloader                   #
@@ -104,6 +106,7 @@ def train_step(batch, opt):
         'charge': batch['charge'],
         'energy': batch['ce'],
         'method': batch['method'] if 'method' in batch else None,
+        'instrument': batch['instrument'] if 'instrument' in batch else None,
     }
     prediction = model(**inp)
     
@@ -143,6 +146,7 @@ def evaluation(dset='val', max_steps=1e10, save_df=False):
             'charge': batchdev['charge'],
             'energy': batchdev['ce'],
             'method': batchdev['method'] if 'method' in batch else None,
+            'instrument': batchdev['instrument'] if 'instrument' in batch else None,
         }
         with th.no_grad():
             prediction = model(**inp)
