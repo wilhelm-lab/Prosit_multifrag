@@ -1,2 +1,2 @@
-model_wts: save/2024-12-24_07-06-13/weights/model_epoch29_0.2945
-out_name: 'save/test_results_241224_allinone.parquet'
+model_wts: save/2025-02-12_09-48-03/weights/model_epoch28_0.3130
+out_name: 'save/test_results_250212_allinone.parquet'

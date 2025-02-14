@@ -95,7 +95,7 @@ for enzyme in enzymes:
     
     # Parse the search results
     #input_path = glob(os.path.join(base_directory, "pepxml", '*'+config['frags_searched'])+'*', )
-    input_path = glob(os.path.join(base_directory, config['frags_searched'], "psm.tsv"))
+    input_path = glob(os.path.join(base_directory1, "msfragger_runs/0_pepxml", fragmentation_method, enzyme, "psm.tsv"))
     assert len(input_path) == 1
     #peptides = pp.convert_search(
     #    input_path=input_path[0],

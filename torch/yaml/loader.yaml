@@ -3,12 +3,12 @@ dataset_path:
   val: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/*val*parquet
   test: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/*test*parquet
 tokenizer: mine
-sequence_dictionary_path: /cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/allinone/token_dictionary.txt
+sequence_dictionary_path: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/token_dictionary.txt
 ion_counts_path: /cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/allinone/ion_counts.tab
-method_list: [ECD,EID,UVPD,HCD]
+method_list: [ECD,EID,UVPD,HCD,CID,ETciD]
 pep_length: [6, 30]
 charge: [1, 6]
 batch_size: 100
-num_workers: 8
+num_workers: 12
 buffer_size: 10000
 

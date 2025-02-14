@@ -40,16 +40,16 @@ def tokenize_modified_sequence(modseq):
 
 if __name__ == "__main__":
 
-    directory = f"/cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/{sys.argv[1]}"
+    directory = f"/cmnfs/data/proteomics/shabaz_exotic/processed/parquet/{sys.argv[1]}"
     list_of_files = glob.glob(os.path.join(directory, "*parquet"))
     #list_of_files += glob.glob(os.path.join(directory, 'val/*parquet'))
 
     tokens = {}
     for file in list_of_files:
         print(file)
-        df = pd.read_parquet(file, columns=['MODIFIED_SEQUENCE'])
+        df = pd.read_parquet(file, columns=['modified_sequence'])
 
-        for m, modseq in enumerate(df['MODIFIED_SEQUENCE']):
+        for m, modseq in enumerate(df['modified_sequence']):
             print("\r%d/%d"%(m, len(df)), end='')
             tokenized = tokenize_modified_sequence(modseq)
             dic = Counter(tokenized)

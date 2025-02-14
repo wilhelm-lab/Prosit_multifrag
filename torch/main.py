@@ -121,7 +121,7 @@ def train_step(batch, opt):
 #             Training and Evaluation             #
 ###################################################
 
-def evaluation(dset='val', save_df=False):
+def evaluation(dset='val', max_steps=1e10, save_df=False):
     model.eval()
     
     df = pd.DataFrame()
@@ -132,7 +132,9 @@ def evaluation(dset='val', save_df=False):
     total_eval_steps = dobj.sizes[dset] // master_config['batch_size']
     for step, batch in enumerate(dobj.dataloader[dset]):
         print("\rEvaluation batch %d/%d"%(step, total_eval_steps), end=50*" ")
-        
+        if step == max_steps:
+            break
+
         sum_instances += len(batch['charge'])
         batchdev = U.Dict2dev(batch, device, inplace=False)
 
@@ -203,9 +205,9 @@ def train(epochs=1, runlen=50, svfreq=3600):
     warmup = np.linspace(1e-7, master_config['lr'], master_config['warmup_steps'])
     
     # First eval
-    evals = evaluation()
+    evals = evaluation(max_steps=2)
     top_eval_loss = evals['train_loss']
-    if master_config['log_wandb']: wandb.log({'Validation loss': evals['eval_score']})
+    #if master_config['log_wandb']: wandb.log({'Validation loss': evals['eval_score']})
 
     # Train
     running_time = deque(maxlen=runlen) # Full time
