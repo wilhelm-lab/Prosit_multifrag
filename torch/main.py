@@ -47,8 +47,6 @@ model = Model(
 	kwargs=model_config
 )
 model.to(device)
-total_parameters = sum([m.numel() for m in model.parameters() if m.requires_grad])
-print(f"Total encoder parameters: {total_parameters:,}")
 
 starting_lr = master_config['lr'] if master_config["warmup_steps"]==0 else 1e-7
 opt = th.optim.Adam(model.parameters(), master_config['lr'])
@@ -316,12 +314,39 @@ def train(epochs=1, runlen=50, svfreq=3600):
 
 if __name__ == '__main__':
     if len(sys.argv)==1:
+        total_parameters = sum([m.numel() for m in model.parameters() if m.requires_grad])
+        print(f"Total model parameters: {total_parameters:,}")
         train(master_config['epochs'])
     else:
         print("Running evaluation")
+
         with open("yaml/eval.yaml") as f:
             eval_config = yaml.safe_load(f)
+        
+        # Must reconstitute model used for evaluation
+        yaml_path = "yaml" if eval_config['yaml_path'] is None else eval_config['yaml_path']
+        with open(os.path.join(yaml_path, "model.yaml"), "r") as f:
+            model_config = yaml.safe_load(f)
+        with open(os.path.join(yaml_path, "loader.yaml"), "r") as f:
+            load_config = yaml.safe_load(f)
+        if load_config['method_list'] is not None:
+            model_config['num_methods'] = len(load_config['method_list'])
+        load_config['tokenizer'] = tokenize_modified_sequence if load_config['tokenizer']=='mine' else None
+        load_config['batch_size'] = master_config['batch_size'] # OVERRIDE
+        if eval_config['test_path'] is not None:
+            load_config['dataset_path']['test'] = eval_config['test_path']
+        dobj = DobjHF(**load_config)
+        model = Model(
+            tokens = len(dobj.amod_dic),
+            final_units = len(dobj.ion_df),
+            max_charge = load_config['charge'][-1],
+            kwargs=model_config
+        )
+        model.to(device)
         model.load_state_dict(th.load(eval_config['model_wts'], map_location=device))
+        total_parameters = sum([m.numel() for m in model.parameters() if m.requires_grad])
+        print(f"Total model parameters: {total_parameters:,}")
+
         out = evaluation('test', save_df=True)
         out['dataframe'].to_parquet(eval_config['out_name'])
         print()

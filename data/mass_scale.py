@@ -274,11 +274,11 @@ class Scale:
         elif let=='Z': # z-prime
             sm = sum([self.mass[aa] for aa in seq[-num:]])
             modmass = sum([mod[1] for mod in modlst if ((len(seq)-num)<=mod[0])])
-            return self.mass['i'] + (sm + self.mass['oxygen'] - self.mass['nitrogen'] + self.mass['hydrogen'] + modmass + nl + iso*isomass + delta) / charge
+            return self.mass['i'] + (sm + self.mass['oxygen'] - self.mass['nitrogen'] + modmass + nl + iso*isomass + delta) / charge
         elif let=='z': # z_r in spectrum fundamentals, z-dot (PRIMARY PRODUCT)
             sm = sum([self.mass[aa] for aa in seq[-num:]])
             modmass = sum([mod[1] for mod in modlst if ((len(seq)-num)<=mod[0])])
-            return self.mass['i'] + (sm + self.mass['oxygen'] - self.mass['nitrogen'] + modmass + nl + iso*isomass + delta) / charge # + 0.0027545
+            return self.mass['i'] + (sm + self.mass['oxygen'] - self.mass['nitrogen'] - self.mass['hydrogen'] + modmass + nl + iso*isomass + delta) / charge # + 0.0027545
         elif let=='I':
             sm = self.mass[letnum]
             return (sm + iso*isomass + delta) / charge

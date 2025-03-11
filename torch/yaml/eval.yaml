@@ -1,2 +1,4 @@
-model_wts: save/2025-02-12_09-48-03/weights/model_epoch28_0.3130
-out_name: 'save/test_results_250212_allinone.parquet'
+model_wts: save/2025-02-06_12-16-20/weights/model_epoch29_0.3015
+yaml_path: save/2025-02-06_12-16-20/yaml
+test_path: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/*tr0*parquet
+out_name: 'save/train_results_250206_allinone.parquet'
