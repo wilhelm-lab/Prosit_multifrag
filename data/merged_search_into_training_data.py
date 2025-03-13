@@ -106,7 +106,7 @@ if svdir == 'allinone':
     all_tokens = {}
     for frag_directory in config['method']:
         ion_counts_file = glob(f"/cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/{frag_directory}/ion_counts.tab")[0]
-        token_counts_file = glob(f"/cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/{frag_directory}/token_dictionary.txt")[0]
+        #token_counts_file = glob(f"/cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/{frag_directory}/token_dictionary.txt")[0]
 
         ion_counts = {line.split()[0]: int(line.split()[1]) for line in open(ion_counts_file).read().strip().split("\n")}
         for ion, count in ion_counts.items():
@@ -114,19 +114,21 @@ if svdir == 'allinone':
                 all_ions[ion] = 0
             all_ions[ion] += count
 
-        token_counts = {line.split()[0]: int(line.split()[1]) for line in open(token_counts_file).read().strip().split("\n")}
-        for token, count in token_counts.items():
-            if token not in all_tokens:
-                all_tokens[token] = 0
-            all_tokens[token] += count
-
+        #token_counts = {line.split()[0]: int(line.split()[1]) for line in open(token_counts_file).read().strip().split("\n")}
+        #for token, count in token_counts.items():
+        #    if token not in all_tokens:
+        #        all_tokens[token] = 0
+        #    all_tokens[token] += count
+    
+    print("Writing ion_counts.tab")
     with open(f"/cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/{svdir}/ion_counts.tab", "w") as f:
         lines = ["%s\t%d"%(ion, count) for ion, count in all_ions.items()]
         f.write("\n".join(lines))
-
-    with open(f"/cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/{svdir}/token_dictionary.txt", "w") as f:
-        lines = ["%s %d"%(token, count) for token, count in all_tokens.items()]
-        f.write("\n".join(lines))
+    
+    #print("Writing token_dictionary.txt")
+    #with open(f"/cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/{svdir}/token_dictionary.txt", "w") as f:
+    #    lines = ["%s %d"%(token, count) for token, count in all_tokens.items()]
+    #    f.write("\n".join(lines))
 
 #############
 # Filtering #

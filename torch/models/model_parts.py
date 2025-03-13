@@ -76,8 +76,8 @@ class QKVAttention(nn.Module):
         elif len(mask.shape) == 3:
             mask = mask[:, None]
         
-        weights = th.softmax(QK-mask, dim=-1)
-        weights = weights.reshape(-1, sl, V.shape[1])
+        weights_ = th.softmax(QK-mask, dim=-1)
+        weights = weights_.reshape(-1, sl, V.shape[1])
         
         #weights = after_lambda(weights)
 
@@ -88,7 +88,7 @@ class QKVAttention(nn.Module):
         if gate is not None:
             att = att * gate
 
-        other = [QK, weights, att] if return_full else None
+        other = [QK, weights_, att] if return_full else weights_
         
         return att, other
 
@@ -261,7 +261,7 @@ class SelfAttention(BaseAttentionLayer):
         else:
             output = self.shortcut(x) + self.drop(resid)
         
-        other = [Q, K, V] + other + [resid] if return_full else None
+        other = [Q, K, V] + other + [resid] if return_full else other
         
         return {'out': output, 'other': other}
 
@@ -447,7 +447,7 @@ class TransBlock(nn.Module):
         out = outffn['out']
         out = out if self.prenorm else self.norm2(out)
         
-        other = outsa['other'] + outffn['other'] + [out] if return_full else None
+        other = outsa['other'] + outffn['other'] + [out] if return_full else outsa['other']
         
         return {'out': out, 'other': other}
 

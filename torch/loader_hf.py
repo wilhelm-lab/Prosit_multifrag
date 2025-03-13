@@ -139,7 +139,7 @@ class DobjHF:
         # Map to format outputs
         remove_columns = ['score', 'num_peaks', 'pep_len']
         if method_list == None: remove_columns.append("method")
-        if instrument_list == None: remove_columns.append("instrument")
+        #if instrument_list == None: remove_columns.append("instrument")
         dataset = dataset.map(
             lambda example: 
             map_fn(

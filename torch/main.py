@@ -48,6 +48,7 @@ model = Model(
 )
 model.to(device)
 
+total_parameters = sum([m.numel() for m in model.parameters() if m.requires_grad])
 starting_lr = master_config['lr'] if master_config["warmup_steps"]==0 else 1e-7
 opt = th.optim.Adam(model.parameters(), master_config['lr'])
 
@@ -145,6 +146,7 @@ def evaluation(dset='val', max_steps=1e10, save_df=False):
             'energy': batchdev['ce'],
             'method': batchdev['method'] if 'method' in batch else None,
             'instrument': batchdev['instrument'] if 'instrument' in batch else None,
+            'return_softmax': False,
         }
         with th.no_grad():
             prediction = model(**inp)
@@ -182,11 +184,10 @@ def train(epochs=1, runlen=50, svfreq=3600):
     
     # Shorthand
     bs = master_config['batch_size']
-    msg = master_config['log']
     swt = master_config['svwts']
     
     # Create experiment directory in save/
-    if (msg or swt):
+    if swt:
         timestamp = U.timestamp()
         svdir = 'save/' + timestamp
         U.create_experiment(svdir, svwts=master_config['svwts'])
@@ -196,13 +197,6 @@ def train(epochs=1, runlen=50, svfreq=3600):
     else:
         svdir = './' # for establishing ds objects below
     
-    # Log starting messages and start collection all lines
-    if msg:
-        line = f"Experiment header: {master_config['header']}\nTotal parameters: {total_parameters():,}\n"
-        U.message_board(line, "%s/epochout.txt"%svdir)
-        line = "%s\n%s\n"%(timestamp, master_config['header'])
-        allepochlines = [line]
-
     # Warmup lr
     warmup = np.linspace(1e-7, master_config['lr'], master_config['warmup_steps'])
     
@@ -295,21 +289,9 @@ def train(epochs=1, runlen=50, svfreq=3600):
                 U.save_full_model(model, None, svdir, ext='epoch%d_%.4f'%(epoch, evals['train_loss']))
                 top_eval_loss = evals['train_loss']
             U.save_full_model(model, opt, svdir, ext='last')
-        if msg:
-            U.message_board(Line, "%s/epochout.txt"%svdir)
-            allepochlines.append(Line)
-            #save_train_loss(loss_list)
-            #loss_list = []
 
         sys.stdout.write("\r\033[K%s"%Line)
-        if msg:
-            U.message_board(Line+'\n', "%s/epochout.txt"%svdir)
-            allepochlines.append(Line+"\n")
 
-    if msg:
-        # Append results to the .all files
-        U.message_board("".join(allepochlines), "save/epochout.all")
-    
     print()
 
 if __name__ == '__main__':

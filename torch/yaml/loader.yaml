@@ -1,12 +1,12 @@
 dataset_path: 
-  train: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/*train*.parquet
-  val: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/*val*parquet
-  test: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/*tr0*parquet
+  train: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/archive/try4/*train*.parquet
+  val: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/archive/try4/*val*parquet
+  test: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/archive/try4/*test*parquet
 tokenizer: mine
-sequence_dictionary_path: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/token_dictionary.txt
-ion_counts_path: /cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/allinone/ion_counts.tab
-method_list: [ECD,EID,UVPD,HCD,CID,ETciD]
-instrument_list: [omnitrap, lumos]
+sequence_dictionary_path: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/archive/try4/token_dictionary.txt
+ion_counts_path: /cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/allinone/archive/try4/ion_counts.tab
+method_list: [ECD,EID,UVPD,HCD,ETciD]
+instrument_list:
 pep_length: [6, 30]
 charge: [1, 6]
 batch_size: 100

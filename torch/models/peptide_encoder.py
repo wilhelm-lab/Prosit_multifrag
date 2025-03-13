@@ -34,6 +34,7 @@ class PeptideEncoder(nn.Module):
                  use_charge=True,
                  use_energy=False,
                  use_method=False,
+                 use_instrument=False,
                  final_act='identity'
                  ):
         super(PeptideEncoder, self).__init__()
@@ -41,6 +42,8 @@ class PeptideEncoder(nn.Module):
         self.use_energy = use_energy
         self.use_method = use_method
         self.at_least_1 = self.use_charge or self.use_energy or self.use_method
+        self.depth = depth
+        self.h = h
 
         # Positional information
         arng = th.arange(0, 100, 1, dtype=th.float32)
@@ -142,7 +145,14 @@ class PeptideEncoder(nn.Module):
 
         return precursor_embedding
 
-    def forward(self, intseq, charge=None, energy=None, method=None):
+    def forward(self, 
+        intseq, 
+        charge=None, 
+        energy=None, 
+        method=None, 
+        instrument=None, 
+        return_softmax=False
+    ):
         sequence = self.sequence_embedding(intseq)
         out = sequence + self.alpha_pos*self.pos[:intseq.shape[1]][None]
 
@@ -150,14 +160,27 @@ class PeptideEncoder(nn.Module):
         if self.at_least_1 and (self.prec_type == 'pretoken'):
             out = th.cat([PreEmb[:,None], out], axis=1)
             PreEmb = None
-
+        
+        attention_weights = []
         for layer in self.main:
-            out = layer(out, embed_feats=PreEmb)
-            out = out['out']
+            out_ = layer(out, embed_feats=PreEmb)
+            out = out_['out']
+            if return_softmax:
+                attention_weights.append(out_['other'])
 
         penultimate = self.penult(out)
+        
+        out = self.last(penultimate).mean(1)
 
-        return self.last(penultimate).mean(1)
+        if return_softmax:
+            return (
+                out, 
+                th.cat(attention_weights).reshape(
+                    intseq.shape[0], self.depth, self.h, intseq.shape[-1], intseq.shape[-1]
+                )
+            )
+        else:
+            return out
 
 def PeptideEncoderModel(
     final_units,
