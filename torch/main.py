@@ -146,7 +146,6 @@ def evaluation(dset='val', max_steps=1e10, save_df=False):
             'energy': batchdev['ce'],
             'method': batchdev['method'] if 'method' in batch else None,
             'instrument': batchdev['instrument'] if 'instrument' in batch else None,
-            'return_softmax': False,
         }
         with th.no_grad():
             prediction = model(**inp)
@@ -194,6 +193,8 @@ def train(epochs=1, runlen=50, svfreq=3600):
         if master_config['svwts']: 
             U.save_full_model(model, opt, svdir, ext='last')
             dobj.ion_df.to_csv(os.path.join(svdir, "filtered_ion_dict.csv"), index=True)
+            os.system(f"cp {load_config['sequence_dictionary_path']} {svdir}")
+            os.system(f"cp {load_config['ion_counts_path']} {svdir}")
     else:
         svdir = './' # for establishing ds objects below
     
@@ -316,6 +317,7 @@ if __name__ == '__main__':
         load_config['tokenizer'] = tokenize_modified_sequence if load_config['tokenizer']=='mine' else None
         load_config['batch_size'] = master_config['batch_size'] # OVERRIDE
         if eval_config['test_path'] is not None:
+            load_config['dataset_path']['train'] = eval_config['test_path'] # dataset sizes are set based on train path
             load_config['dataset_path']['test'] = eval_config['test_path']
         dobj = DobjHF(**load_config)
         model = Model(

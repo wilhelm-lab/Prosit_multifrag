@@ -1,4 +1,4 @@
-model_wts: save/2025-02-06_12-16-20/weights/model_epoch29_0.3015
-yaml_path: save/2025-02-06_12-16-20/yaml
-test_path: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/*tr0*parquet
+model_wts: /cmnfs/proj/shabaz/model/2025-02-06_12-16-20/weights/model_epoch29_0.3015
+yaml_path: /cmnfs/proj/shabaz/model/2025-02-06_12-16-20/yaml
+test_path: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/archive/try4/*test*parquet
 out_name: 'save/train_results_250206_allinone.parquet'
