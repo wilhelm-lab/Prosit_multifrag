@@ -5,7 +5,7 @@ import sys
 sys.path.append("/cmnfs/home/j.lapin/projects/shabaz")
 from enumerate_tokens import tokenize_modified_sequence as tokenizer
 
-file_path = '/cmnfs/home/j.lapin/projects/shabaz/torch/save/test_results_241213_allinone.parquet'
+file_path = '/cmnfs/proj/xai/20250312_transformer.parquet'
 df = pd.read_parquet(file_path)
 
 # Filter for better predictions

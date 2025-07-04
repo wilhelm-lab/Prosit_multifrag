@@ -1,10 +1,10 @@
 log_wandb: False
 project: shabaz
-svwts: True
+svwts: False
 epochs: 30
 lr: 0.0001
 warmup_steps: 20000
 batch_size: 100
-model_type: prosit
+model_type: other
 loss_function: masked_spectral_distance
 eval_function: pearson # pearson

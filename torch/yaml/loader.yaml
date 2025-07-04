@@ -4,7 +4,7 @@ dataset_path:
   test: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/archive/try4/*test*parquet
 tokenizer: mine
 sequence_dictionary_path: /cmnfs/data/proteomics/shabaz_exotic/processed/parquet/allinone/archive/try4/token_dictionary.txt
-ion_counts_path: /cmnfs/data/proteomics/shabaz_exotic/processed/merged_search/allinone/archive/try4/ion_counts.tab
+ion_counts_path: /cmnfs/proj/shabaz/model/2025-02-06_12-16-20/ion_counts.tab
 method_list: [ECD,EID,UVPD,HCD,ETciD]
 instrument_list:
 pep_length: [6, 30]

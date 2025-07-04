@@ -320,6 +320,7 @@ if __name__ == '__main__':
             load_config['dataset_path']['train'] = eval_config['test_path'] # dataset sizes are set based on train path
             load_config['dataset_path']['test'] = eval_config['test_path']
         dobj = DobjHF(**load_config)
+        Model = PrositModel if eval_config['model'] == 'prosit' else PeptideEncoderModel
         model = Model(
             tokens = len(dobj.amod_dic),
             final_units = len(dobj.ion_df),
