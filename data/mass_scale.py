@@ -114,6 +114,7 @@ class Scale:
                 'Acetyl':42.010565,'Carbamidomethyl':57.021464,'Oxidation':15.994915,'Deamidation': 0.984016,
                 'Gln->pyro-Glu':-17.026549, 'Glu->pyro-Glu':-18.010565,'Phospho':79.966331,
                 'Pyro-carbamidomethyl':39.994915,'CAM':57.021464,'TMT6plex':231.17747,'nAcetyl':203.079373,
+                'Carbamyl': 43.005814,
                 # Single atoms
                 'hydrogen':1.007825035,'oxygen':15.9949146,'nitrogen':14.003074,
                 'sulphur':31.9720707,'carbon':12,'phosphorus':30.973762,
@@ -143,7 +144,9 @@ class Scale:
     	}
         self.mass['1'] = self.mass['Acetyl']
         self.mass['4'] = self.mass['Carbamidomethyl']
+        self.mass['5'] = self.mass['Carbamyl']
         self.mass['7'] = self.mass['Deamidation']
+        self.mass['28'] = self.mass['Gln->pyro-Glu']
         self.mass['35'] = self.mass['Oxidation']
 
     def calcmass(self, modseq, precursor_charge, ion, delta=0.0):
