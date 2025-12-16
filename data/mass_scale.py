@@ -72,6 +72,7 @@ def tokenize_modified_sequence(modseq):
         character = modseq[pos]
         hx = ord(character)
         if character == '[':
+            
             ahead = 1
             mod = []
             while character != ']':
@@ -107,14 +108,16 @@ class Scale:
             'NH2':16.0187,'NH3':17.026549105,'H2O':18.010565,'CO':27.994915,
             'C2H5NOS':91.009184,'CH2SH':46.9955+0.0458,'CH3SOH':63.99828544,
             'HPO3':79.966335,'H3PO4':97.9769,'H5PO5':115.987465,'H7PO6':133.99803,
-            'TMT':229.17,'RP126':154.1221,'RP127N':155.1192,'RP127C':155.1254,
-            'RP128N':156.1225,'RP128C':156.1287,'RP129N':157.1258,'RP129C':157.1322,
-            'RP130N':158.1291,'RP130C':158.1356,'RP131':159.1325,
+            'U43':43.0419,'U29':29.026172,'U4':3.99491,
+            # Neutral additions
+            'CH2':-14.015650,'C4H2O':-66.010565,'U55':-55.04245,
+            'U10':-10.020794,'U94':-94.042156,'U16':-16.031276,'U63':-63.010416,
+            'U68':-68.06231,'U49':-49.97947,'U39':-39.05771,'U17':-16.96137,
             # Modifications
             'Acetyl':42.010565,'Carbamidomethyl':57.021464,'Oxidation':15.994915,'Deamidation': 0.984016,
             'Gln->pyro-Glu':-17.026549, 'Glu->pyro-Glu':-18.010565,'Phospho':79.966331,
-            'Pyro-carbamidomethyl':39.994915,'CAM':57.021464,'TMT6plex':231.17747,'nAcetyl':203.079373,
-            'Carbamyl': 43.005814,
+            'Ubiquitinylation': 114.042927,'Pyro-carbamidomethyl':39.994915,'nAcetyl':203.079373,
+            'Carbamyl': 43.005814,"Methyl":14.015650,
             # Single atoms
             'hydrogen':1.007825035,'oxygen':15.9949146,'nitrogen':14.003074,
             'sulphur':31.9720707,'carbon':12,'phosphorus':30.973762,
@@ -136,33 +139,67 @@ class Scale:
             'ITB':119.0814,  'IVA':72.080776, 'IVC':55.054227, 'IVD':69.033491,
             'IWA':159.091675,'IWB':77.038577, 'IWC':117.057301,'IWD':130.065126,
             'IWE':132.080776,'IWF':170.06004, 'IWH':142.065126,'IYA':136.07569,
-            'IYB':91.054227, 'IYC':107.049141,
-            'ICCAM':133.04301,
-            'TMTpH':230.17,'TMT126':126.1277,'TMT127N':127.1248,'TMT127C':127.1311,
-            'TMT128N':128.1281,'TMT128C':128.1344,'TMT129N':129.1315,
+            'IYB':91.054227, 'IYC':107.049141,'ICCAM':133.04301,
+            # TMT
+            'TMT':229.17,'TMTpH':230.17,'TMT6plex':229.162932,'TMT126':126.1277,'TMT127N':127.1248,
+            'TMT127C':127.1311,'TMT128N':128.1281,'TMT128C':128.1344,'TMT129N':129.1315,
             'TMT129C':129.1378,'TMT130N':130.1348,'TMT130C':130.1411,'TMT131':131.1382,
-            # Undefined immonium ions
-            #'IL0': 131.1178479875837, # Related to I,L -> I/L+NH3
-            #'IF0': 165.1021088, # Related to F -> F+NH3
-            #'IV0': 117.10233879089355, # Related to V -> V+NH3
-            #'IN0': 132.07664925711495, # N+NH3
-            #'IFT': 176.1067714691162, # Related to FT
-            #'IU1': 105.0661055246989, # N Related to SQL/SQI and permutations of
-            #'IU3': 127.08656565348308, # N Related to NV/VN
-            #'IU5': 132.07664925711495, # C Related to NQ
-            #'IU6': 141.10200859518613, # N
-            #'IU7': 147.11255031678735, # C Related to Lysine; Legit immonium ion?
-            #'IU8': 244.16515373461175, # C Related PK (y2) Coincident with another forward ion?
-            #'IU9': 260.1963806152344, # C Related to LK/IK # Same issue
-            #'IU10': 272.1713358561198, # C Related to PR
+            'RP126':154.1221,'RP127N':155.1192,'RP127C':155.1254,'RP128N':156.1225,'RP128C':156.1287,
+            'RP129N':157.1258,'RP129C':157.1322,'RP130N':158.1291,'RP130C':158.1356,'RP131':159.1325,
+			#'IU1': 115.08691729032077, # N
+            #'IU2': 125.10757847836143, # N
+            #'IU3': 127.08694585164388, # N
+            #'IU4': 131.11814575195314, # N
+            #'IU5': 132.0770736694336, # N
+            #'IU6': 140.07081451416016, # C
+            #'IU7': 141.1025064641779, # N
+            #'IU8': 147.11303313439635, # N
+            #'IU9': 165.10257720947266, # N
+            #'IU10': 166.06147340286608, # N
+            #'IU11': 171.1493174235026, # N
+            #'IU12': 173.12874494280135, # N
+            #'IU13': 181.06096649169922, # N
+            #'IU14': 183.11312596938188, # N
+            #'IU15': 183.14950052897134, # C
+            #'IU16': 185.16516434518914, # N
+            #'IU17': 187.1443337334527, # N
+            #'IU18': 195.07674381650727, # N
+            #'IU19': 197.12886602228338, # N
+            #'IU20': 199.1807104616749, # C
+            #'IU21': 200.13958663940429, # C
+            #'IU22': 201.1235819498698, # C
+            #'IU23': 214.15518637264475, # N
+            #'IU24': 215.13918528837317, # C
+            #'IU25': 226.08233308792114, # C
+            #'IU26': 227.17574214935303, # N
+            #'IU27': 233.16517985950816, # C
+            #'IU28': 234.12379946027482, # N
+            #'IU29': 241.08193492889404, # N
+            #'IU30': 244.16570902979652, # C
+            #'IU31': 249.09842722039474, # N
+            #'IU32': 259.09247878502157, # N
+            #'IU33': 260.1972102412471, # C
+            #'IU34': 272.17216042911303, # C
+            #'IU35': 294.1819101969401, # C
+            #'IU36': 301.405376823581, # C
+            #'IU37': 301.41000038064936, # C
+            #'IU38': 310.17632409298056, # C
         }
+        # Unimod accession numbers
         self.mass['1'] = self.mass['Acetyl']
         self.mass['4'] = self.mass['Carbamidomethyl']
         self.mass['5'] = self.mass['Carbamyl']
         self.mass['7'] = self.mass['Deamidation']
+        self.mass['21'] = self.mass['Phospho']
         self.mass['28'] = self.mass['Gln->pyro-Glu']
+        self.mass['34'] = self.mass['Methyl']
         self.mass['35'] = self.mass['Oxidation']
+        self.mass['121'] = self.mass['Ubiquitinylation']
+        self.mass['737'] = self.mass['TMT6plex']
+        # Other
+        self.mass['CAM'] = self.mass['Carbamidomethyl']
         self.mass['CONH3'] = self.mass['CO'] + self.mass['NH3']
+        self.mass['pAce'] = -self.mass['Acetyl']
 
     def calcmass(self, modseq, precursor_charge, ion, delta=0.0):
         """
@@ -179,18 +216,12 @@ class Scale:
         mass as a float
 
         """
-
-        ## modification
-        #Mstart = mods.find('(') if mods!='0' else 1
-        #modamt = int(mods[0:Mstart])
-        #modlst = []
-        #if modamt>0:
-        #    Mods = [re.sub("[()]",'',m).split(',') for m in 
-        #             mods[Mstart:].split(')(')]
-        #    for mod in Mods:
-        #        [pos,aa,typ] = mod # mod position, amino acid, and type
-        #        modlst.append([int(pos), self.mass[typ]])
-        tokenized = [self.sepmod(m) if ":" in m else m for m in tokenize_modified_sequence(modseq)]
+        
+        tokenized = tokenize_modified_sequence(modseq)
+        if tokenized[0][0]=='[':
+            nterm_mod = tokenized.pop(0)
+            tokenized[0] = tokenized[0] + nterm_mod
+        tokenized = [self.sepmod(m) if ":" in m else m for m in tokenized]
         seq = "".join([m[0] for m in tokenized])
         modlst = [[i, self.mass[mod[-1]]] for i, mod in enumerate(tokenized) if type(mod)==list]
         
