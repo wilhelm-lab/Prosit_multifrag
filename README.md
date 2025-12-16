@@ -81,7 +81,7 @@ cd torch
 python main.py
 ```
 ### Test the model
-- Go into torch directory
+- Go into `torch` directory
 ```
 cd torch
 ```
@@ -92,6 +92,6 @@ python main.py {any argument}
 ```
 - Outputs a parquet results file
 ---
-Publication (pre-print): https://www.biorxiv.org/content/10.1101/2025.05.28.656555v1
+Publication (pre-print): [MultiFrag pre-print](https://www.biorxiv.org/content/10.1101/2025.05.28.656555v1)
 ---
 For questions, please contact *joel.lapin@tum.de*
