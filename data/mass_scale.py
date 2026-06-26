@@ -120,7 +120,7 @@ class Scale:
             'Carbamyl': 43.005814,"Methyl":14.015650,
             # Single atoms
             'hydrogen':1.007825035,'oxygen':15.9949146,'nitrogen':14.003074,
-            'sulphur':31.9720707,'carbon':12,'phosphorus':30.973762,
+            'sulphur':31.9720707,'carbon':12,'phosphorus':30.973762,'Na': 22.98976928,
             # Isotopes
             'i':1.00727646688,'iso1':1.003,'iso2':1.002,
             # Ions, immoniums, et al.
@@ -146,44 +146,6 @@ class Scale:
             'TMT129C':129.1378,'TMT130N':130.1348,'TMT130C':130.1411,'TMT131':131.1382,
             'RP126':154.1221,'RP127N':155.1192,'RP127C':155.1254,'RP128N':156.1225,'RP128C':156.1287,
             'RP129N':157.1258,'RP129C':157.1322,'RP130N':158.1291,'RP130C':158.1356,'RP131':159.1325,
-			#'IU1': 115.08691729032077, # N
-            #'IU2': 125.10757847836143, # N
-            #'IU3': 127.08694585164388, # N
-            #'IU4': 131.11814575195314, # N
-            #'IU5': 132.0770736694336, # N
-            #'IU6': 140.07081451416016, # C
-            #'IU7': 141.1025064641779, # N
-            #'IU8': 147.11303313439635, # N
-            #'IU9': 165.10257720947266, # N
-            #'IU10': 166.06147340286608, # N
-            #'IU11': 171.1493174235026, # N
-            #'IU12': 173.12874494280135, # N
-            #'IU13': 181.06096649169922, # N
-            #'IU14': 183.11312596938188, # N
-            #'IU15': 183.14950052897134, # C
-            #'IU16': 185.16516434518914, # N
-            #'IU17': 187.1443337334527, # N
-            #'IU18': 195.07674381650727, # N
-            #'IU19': 197.12886602228338, # N
-            #'IU20': 199.1807104616749, # C
-            #'IU21': 200.13958663940429, # C
-            #'IU22': 201.1235819498698, # C
-            #'IU23': 214.15518637264475, # N
-            #'IU24': 215.13918528837317, # C
-            #'IU25': 226.08233308792114, # C
-            #'IU26': 227.17574214935303, # N
-            #'IU27': 233.16517985950816, # C
-            #'IU28': 234.12379946027482, # N
-            #'IU29': 241.08193492889404, # N
-            #'IU30': 244.16570902979652, # C
-            #'IU31': 249.09842722039474, # N
-            #'IU32': 259.09247878502157, # N
-            #'IU33': 260.1972102412471, # C
-            #'IU34': 272.17216042911303, # C
-            #'IU35': 294.1819101969401, # C
-            #'IU36': 301.405376823581, # C
-            #'IU37': 301.41000038064936, # C
-            #'IU38': 310.17632409298056, # C
         }
         # Unimod accession numbers
         self.mass['1'] = self.mass['Acetyl']
@@ -200,6 +162,56 @@ class Scale:
         self.mass['CAM'] = self.mass['Carbamidomethyl']
         self.mass['CONH3'] = self.mass['CO'] + self.mass['NH3']
         self.mass['pAce'] = -self.mass['Acetyl']
+        
+        # Read in UNIMOD file
+        csv = pd.read_csv("/cmnfs/home/j.lapin/materials/unimod.csv")
+        self.umod = csv
+        for i,row in csv.iterrows():
+            self.mass[row['name']] = row['mono_mass']
+            self.mass[str(row['record_id'])] = row['mono_mass']
+    
+    def single_neutral_mass(self, letlist):
+        operator = letlist.pop(0)
+        first = letlist[0]
+        if (ord(first)>=48) & (ord(first)<=57):
+            multiplier = int(letlist.pop(0))
+        else:
+            multiplier = 1
+        multiplier *= -1 if operator=='-' else 1
+        return  multiplier * self.mass["".join(letlist)]
+
+    def total_neutral_mass(self, string):
+        
+        # Assumption ion(-+)NL(-+)
+        first_plus = string.find("+")
+        first_minus = string.find("-")
+        hasplus = first_plus > 0
+        hasminus = first_minus > 0
+        both = hasplus and hasminus
+        neither = (hasplus or hasminus)==False
+        
+        if neither:
+            return 0
+        else:
+            total = 0
+            if both:
+                start = min(first_minus, first_plus)
+                first_letter = '-' if first_minus<first_plus else '+'
+            elif hasminus:
+                start = first_minus
+                first_letter = '-'
+            else :
+                start = first_plus
+                first_letter = '+'
+            collect = [first_letter]
+            for let in string[start+1:]:
+                if let not in ['-', '+']:
+                    collect.append(let)
+                else:
+                    total += self.single_neutral_mass(collect)
+                    collect = [let]
+            total += self.single_neutral_mass(collect)
+            return total
 
     def calcmass(self, modseq, precursor_charge, ion, delta=0.0):
         """
@@ -216,7 +228,6 @@ class Scale:
         mass as a float
 
         """
-        
         tokenized = tokenize_modified_sequence(modseq)
         if tokenized[0][0]=='[':
             nterm_mod = tokenized.pop(0)
@@ -255,12 +266,13 @@ class Scale:
         charge = 1 if len(hold)==1 else int(hold[-1]) # no ^ means charge 1
         # extent
         letnum = hold[0].split('-')[0];let = letnum[0] # ion type and extent is always first string separated by -
+        #letnum = re.split('[-+]', hold[0])[0];let = letnum[0]
         num = int(letnum[1:]) if ((let!='p')&(let!='I')) else 0 # p type ions never have number
         
         # neutral loss
         nl=0
         hold = hold[0].split('-')[1:] # most are minus, separated by -
-        """If NH2-CO-CH2SH, make the switch to C2H5NOS. Get rid of CO and CH2SH.""" 
+        # If NH2-CO-CH2SH, make the switch to C2H5NOS. Get rid of CO and CH2SH.
         #if len(hold)>0 and ('NH2' in hold[0]):
         #    mult = (int(hold[0][0]) 
         #            if ((ord(hold[0][0])>=48) & (ord(hold[0][0])<=57)) else '')
@@ -277,6 +289,7 @@ class Scale:
                 else:
                     mult = 1
                 nl-=mult*self.mass[item]
+        #nl = self.total_neutral_mass(hold[0])
 
         if let == 'A':
             sm = sum([self.mass[aa] for aa in seq[:num]])
