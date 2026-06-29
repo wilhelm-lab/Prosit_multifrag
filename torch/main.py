@@ -50,7 +50,37 @@ model.to(device)
 
 total_parameters = sum([m.numel() for m in model.parameters() if m.requires_grad])
 starting_lr = master_config['lr'] if master_config["warmup_steps"]==0 else 1e-7
-opt = th.optim.Adam(model.parameters(), master_config['lr'])
+opt = th.optim.SGD(model.parameters(), master_config['lr'])
+
+###################################################
+#               GhostEngineManager                #
+###################################################
+sys.path.append("/cmnfs/home/j.lapin/projects/shabaz/torch/GhostSuite")
+from ghostEngines import GhostEngineManager, GradDotProdEngine
+A = next(iter(dobj.dataloader['val']))
+x_val = {a:b for a,b in list(A.items()) if a in ['intseq', 'charge', 'ce', 'method']}
+y_val = {a:b for a,b in list(A.items()) if a in ['intensity']}
+#ghost_engine = GhostEngineManager(
+#    config=master_config,
+#    model=model,
+#    optimizer=opt,
+#    ddp_info={"master_process": True},
+#    val_data=(x_val, y_val),
+#)
+engine = GradDotProdEngine(
+    module=model,
+    val_batch_size=100,
+    loss_reduction='mean',
+    use_dummy_bias=False,
+)
+engine.attach(opt)
+
+# Function for concatentating training and validation batches
+def concat(batch_tr, batch_val):
+    dic = {}
+    for key in batch_tr:
+        dic[key] = th.cat([batch_tr[key], batch_val[key]], dim=0)
+    return dic
 
 ###################################################
 #                     WandB                       #
@@ -96,9 +126,10 @@ eval_function = all_evals[master_config['eval_function']]
 def train_step(batch, opt):
     # Verify training mode, device, and zero grads
     model.train()
-    opt.zero_grad()
-
-    batch = U.Dict2dev(batch, device, inplace=False)
+    opt.zero_grad(set_to_none=True)
+    
+    A_clean = {k: v.detach().clone() for k, v in A.items()}
+    batch = concat(batch, A_clean)
 
     inp = {
         'intseq': batch['intseq'],
@@ -107,13 +138,46 @@ def train_step(batch, opt):
         'method': batch['method'] if 'method' in batch else None,
         'instrument': batch['instrument'] if 'instrument' in batch else None,
     }
-    prediction = model(**inp)
+
+    batch = U.Dict2dev(batch, device, inplace=False)
     
-    loss = loss_function(y_true=batch['intensity'], y_pred=prediction)
-    loss = loss.mean()
+    with engine.saved_tensors_context():
+
+        engine.attach_train_batch(X_train=inp['intseq'], Y_train=batch['intensity'], iter_num=model.global_step.item(), batch_idx=0)
+        prediction = model(**inp)
+
+        loss = loss_function(y_true=batch['intensity'], y_pred=prediction)
+        loss = loss.mean()
+
+        loss.backward()
     
-    loss.backward()
+    # Print per-parameter gradient dot products this iteration (before aggregation clears them)
+    print(f"\n[Iter {step}] Per-parameter gradient dot products (val ⋅ train):")
+    for name, p in model.named_parameters():
+        if hasattr(p, "grad_dot_prod"):
+            vec = p.grad_dot_prod.detach().cpu()
+            print(f"  {name:20s} shape={tuple(vec.shape)} values={vec.tolist()}")
+    
+    # Aggregate across parameters and log this iteration
+    engine.aggregate_and_log()
+    if engine.dot_product_log:
+        agg = engine.dot_product_log[-1]["dot_product"].detach().cpu()
+        print(f"[Iter {step}] Aggregated dot product across parameters: {agg}")
+
+    # Move accumulated training gradients into .grad so the optimizer can update
+    engine.prepare_gradients()
     opt.step()
+    engine.clear_gradients()
+
+    # Show validation loss to confirm the model runs end-to-end
+    engine.detach()
+    with torch.no_grad():
+        val_pred = model(*x_val)
+        loss = loss_function(y_true=batch['intensity'], y_pred=prediction)
+        loss = loss.mean()
+
+        loss.backward()
+        print(f"\nValidation loss after {steps} steps: {val_loss,item():.6f}")
 
     model.global_step +=1
 
