@@ -5,12 +5,12 @@ import models.model_parts as mp
 def model_init(module):
     if isinstance(module, mp.SelfAttention):
         module.qkv.weight = nn.init.normal_(module.qkv.weight, 0, 0.03)
-        module.qkv.bias = nn.init.zeros_(module.qkv.bias)
+        #module.qkv.bias = nn.init.zeros_(module.qkv.bias)
         module.Wo.weight = nn.init.normal_(module.Wo.weight, 0, 0.01)
-        module.Wo.bias = nn.init.zeros_(module.Wo.bias)
+        #module.Wo.bias = nn.init.zeros_(module.Wo.bias)
     if isinstance(module, mp.FFN):
         module.W1.weight = nn.init.normal_(module.W1.weight, 0, 0.03)
-        module.W1.bias = nn.init.zeros_(module.W1.bias)
+        #module.W1.bias = nn.init.zeros_(module.W1.bias)
 
 class PeptideEncoder(nn.Module):
     def __init__(self,
@@ -55,7 +55,7 @@ class PeptideEncoder(nn.Module):
         #    nn.Linear(running_units, running_units),
         #    nn.SiLU(),
         #)
-        self.alpha_pos = nn.Parameter(th.tensor(0.1), requires_grad=True)
+        self.alpha_pos = nn.Parameter(th.tensor(0.1), requires_grad=False)
 
         # Modified sequence embedding
         self.sequence_embedding = nn.Embedding(tokens, running_units)
@@ -67,12 +67,12 @@ class PeptideEncoder(nn.Module):
             if use_charge:
                 self.charge_embedder = nn.Embedding(max_charge, prec_units)
             if use_energy:
-                self.ce_embedder = nn.Linear(prec_units, prec_units)
+                self.ce_embedder = nn.Linear(prec_units, prec_units, bias=True)
             if use_method:
                 self.method_embedder = nn.Embedding(num_methods, prec_units)
         self.num = sum([use_charge, use_energy, use_method])
         if self.num > 0:
-            self.unite_precursors = nn.Linear(self.num*prec_units, prec_units)
+            self.unite_precursors = nn.Linear(self.num*prec_units, prec_units, bias=True)
         
         # Middle
         attention_dict = {
@@ -111,7 +111,7 @@ class PeptideEncoder(nn.Module):
         # Last
         norm = nn.LayerNorm if norm_type == 'layer' else nn.BatchNorm1d
         self.penult = nn.Sequential(
-            nn.Linear(running_units, penult_units),
+            nn.Linear(running_units, penult_units, bias=False),
             norm(penult_units),
             nn.ReLU()
         )
@@ -120,7 +120,7 @@ class PeptideEncoder(nn.Module):
         elif final_act.lower() == 'sigmoid':
             final_act = nn.Sigmoid()
         self.last = nn.Sequential(
-            nn.Linear(penult_units, final_units),
+            nn.Linear(penult_units, final_units, bias=True),
             final_act,
         )
 

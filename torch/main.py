@@ -13,6 +13,10 @@ import numpy as np
 import wandb
 import os
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+sys.path.append("/cmnfs/home/j.lapin/projects/shabaz/torch/GhostSuite")
+from ghostEngines import GhostEngineManager, GradDotProdEngine
 device = th.device("cuda" if th.cuda.is_available() else 'cpu')
 
 with open("yaml/master.yaml", "r") as f:
@@ -55,11 +59,48 @@ opt = th.optim.SGD(model.parameters(), master_config['lr'])
 ###################################################
 #               GhostEngineManager                #
 ###################################################
-sys.path.append("/cmnfs/home/j.lapin/projects/shabaz/torch/GhostSuite")
-from ghostEngines import GhostEngineManager, GradDotProdEngine
-A = next(iter(dobj.dataloader['val']))
-x_val = {a:b for a,b in list(A.items()) if a in ['intseq', 'charge', 'ce', 'method']}
-y_val = {a:b for a,b in list(A.items()) if a in ['intensity']}
+# Function for concatentating training and validation batches
+def concat(batch_tr, batch_val, val_size=None):
+    dic = {}
+    indices = np.arange(batch_val['intseq'].shape[0])
+    indices = indices if val_size == None else np.random.choice(indices, val_size)
+    for key in batch_tr:
+        train = batch_tr[key]
+        val = np.array(batch_val[key])[indices].tolist() if type(batch_val[key])==list else batch_val[key][indices]
+        if th.is_tensor(batch_tr[key]):
+            dic[key] = th.cat([train, val.to(train.device)], dim=0)
+        else:
+            dic[key] = train
+            if val_size==None: dic[key] += val
+    return dic
+
+# Function for writing results to file
+def dump_log(writer, epoch=0, save_directory='./'):
+    dot_products = th.cat([m['dot_product'] for m in engine.dot_product_log]).tolist()
+    identifiers = np.concat([m['batch_idx'] for m in engine.dot_product_log]).tolist()
+    batch_iters = np.concat([len(m['batch_idx'])*[m['iter_num']] for m in engine.dot_product_log]).tolist()
+    dataframe = {
+        'identifier': identifiers,
+        'batch_iters': batch_iters,
+        'dot_product': dot_products,
+    }
+
+    table = pa.Table.from_pandas(pd.DataFrame(dataframe), preserve_index=False)
+    if writer is None:
+        writer = pq.ParquetWriter(os.path.join(save_directory, f'dot_product_epoch_{epoch}.parquet'), table.schema, compression='snappy')
+        schema_defined = True
+    writer.write_table(table)
+    engine.dot_product_log.clear()
+    
+    return writer
+
+# The validation set (2 batches) to concatenate during training
+val_iterator = iter(dobj.dataloader['val'])
+A = next(val_iterator)
+A = concat(A, next(val_iterator))
+
+#x_val = {a:b[:100] for a,b in list(A.items()) if a in ['intseq', 'charge', 'ce', 'method']}
+#y_val = {a:b[:100] for a,b in list(A.items()) if a in ['intensity']}
 #ghost_engine = GhostEngineManager(
 #    config=master_config,
 #    model=model,
@@ -67,20 +108,14 @@ y_val = {a:b for a,b in list(A.items()) if a in ['intensity']}
 #    ddp_info={"master_process": True},
 #    val_data=(x_val, y_val),
 #)
+val_size = 50
 engine = GradDotProdEngine(
     module=model,
-    val_batch_size=100,
+    val_batch_size=val_size,
     loss_reduction='mean',
     use_dummy_bias=False,
 )
 engine.attach(opt)
-
-# Function for concatentating training and validation batches
-def concat(batch_tr, batch_val):
-    dic = {}
-    for key in batch_tr:
-        dic[key] = th.cat([batch_tr[key], batch_val[key]], dim=0)
-    return dic
 
 ###################################################
 #                     WandB                       #
@@ -128,8 +163,8 @@ def train_step(batch, opt):
     model.train()
     opt.zero_grad(set_to_none=True)
     
-    A_clean = {k: v.detach().clone() for k, v in A.items()}
-    batch = concat(batch, A_clean)
+    batch = concat(batch, A, val_size)
+    batch = U.Dict2dev(batch, device, inplace=False)
 
     inp = {
         'intseq': batch['intseq'],
@@ -138,12 +173,10 @@ def train_step(batch, opt):
         'method': batch['method'] if 'method' in batch else None,
         'instrument': batch['instrument'] if 'instrument' in batch else None,
     }
-
-    batch = U.Dict2dev(batch, device, inplace=False)
     
     with engine.saved_tensors_context():
-
-        engine.attach_train_batch(X_train=inp['intseq'], Y_train=batch['intensity'], iter_num=model.global_step.item(), batch_idx=0)
+        engine.attach_train_batch(X_train=th.tensor([]), Y_train=th.tensor([]), iter_num=model.global_step.item(), batch_idx=batch['identifier'])
+        
         prediction = model(**inp)
 
         loss = loss_function(y_true=batch['intensity'], y_pred=prediction)
@@ -151,33 +184,42 @@ def train_step(batch, opt):
 
         loss.backward()
     
+    """
     # Print per-parameter gradient dot products this iteration (before aggregation clears them)
-    print(f"\n[Iter {step}] Per-parameter gradient dot products (val ⋅ train):")
+    print(f"\n[Iter {model.global_step.item()}] Per-parameter gradient dot products (val ⋅ train):")
     for name, p in model.named_parameters():
         if hasattr(p, "grad_dot_prod"):
             vec = p.grad_dot_prod.detach().cpu()
             print(f"  {name:20s} shape={tuple(vec.shape)} values={vec.tolist()}")
+    """
     
     # Aggregate across parameters and log this iteration
     engine.aggregate_and_log()
-    if engine.dot_product_log:
+    """if engine.dot_product_log:
         agg = engine.dot_product_log[-1]["dot_product"].detach().cpu()
-        print(f"[Iter {step}] Aggregated dot product across parameters: {agg}")
-
+        print(f"[Iter {model.global_step.item()}] Aggregated dot product across parameters: {agg}")"""
+    
     # Move accumulated training gradients into .grad so the optimizer can update
     engine.prepare_gradients()
     opt.step()
     engine.clear_gradients()
-
+    
+    """
     # Show validation loss to confirm the model runs end-to-end
-    engine.detach()
-    with torch.no_grad():
-        val_pred = model(*x_val)
-        loss = loss_function(y_true=batch['intensity'], y_pred=prediction)
-        loss = loss.mean()
-
-        loss.backward()
-        print(f"\nValidation loss after {steps} steps: {val_loss,item():.6f}")
+    #engine.detach()
+    with th.no_grad():
+        x_val_ = {
+            'intseq': x_val['intseq'],
+            'charge': x_val['charge'],
+            'energy': x_val['ce'],
+            'method': x_val['method'] if 'method' in x_val else None,
+            'instrument': x_val['instrument'] if 'instrument' in x_val else None,
+        }
+        val_pred = model(**x_val_)
+        val_loss = loss_function(y_true=batch['intensity'], y_pred=prediction)
+        val_loss = val_loss.mean()
+        print(f"\nValidation loss after {model.global_step.item()} steps: {val_loss.item():.6f}")
+    """
 
     model.global_step +=1
 
@@ -282,7 +324,8 @@ def train(epochs=1, runlen=50, svfreq=3600):
     max_steps_tick=False
     for epoch in range(epochs):
         start_epoch = time()
-        
+
+        writer=None
         dobj.dataset['train'].set_epoch(epoch)
         total_train_steps = dobj.sizes['train'] // master_config['batch_size']
         start_load = time()
@@ -306,6 +349,10 @@ def train(epochs=1, runlen=50, svfreq=3600):
             running_loss.append(loss)
             running_time.append(time()-start_step)
             graph_time.append(time()-TT)
+
+            # Logging data shapley
+            if (step + 1) % master_config['log_dp_every'] == 0:
+                writer = dump_log(writer, epoch, save_directory=svdir)
                         
             # Stdout
             mean_loss = np.mean(running_loss)
@@ -340,6 +387,7 @@ def train(epochs=1, runlen=50, svfreq=3600):
             start_load = time()
 
         # End of epoch
+        writer.close()
         if max_steps_tick:
             break
         

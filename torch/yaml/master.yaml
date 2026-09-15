@@ -1,10 +1,11 @@
 log_wandb: False
-project: shabaz
+project: datashapley
 svwts: False
-epochs: 30
-lr: 0.0001
-warmup_steps: 20000
-batch_size: 100
+log_dp_every: 100
+epochs: 100
+lr: 0.05
+warmup_steps: 1000
+batch_size: 128
 model_type: other
 loss_function: masked_spectral_distance
 eval_function: pearson # pearson

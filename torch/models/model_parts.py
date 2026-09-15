@@ -122,12 +122,12 @@ class BaseAttentionLayer(nn.Module):
         self.shortcut = (
             nn.Identity()
             if self.out_units == indim else
-            nn.Linear(indim, out_units)
+            nn.Linear(indim, out_units, bias=True)
         )
         
         self.gate = gate
         if gate:
-            self.Wg = nn.Linear(indim, d*h)
+            self.Wg = nn.Linear(indim, d*h, bias=True)
         
         if alphabet:
             self.alpha = nn.Parameter(th.tensor(1.), requires_grad=True)
@@ -149,11 +149,11 @@ class SelfAttention(BaseAttentionLayer):
                  rotation_values=None,
     ):
         super().__init__(
-            indim=indim, d=d, h=h, out_units=out_units, 
+            indim=indim, d=d, h=h, out_units=out_units,
             gate=gate, dropout=dropout, alphabet=alphabet
         )
 
-        self.qkv = nn.Linear(indim, 3*d*h, bias=True)
+        self.qkv = nn.Linear(indim, 3*d*h, bias=False)
         self.rotation_matrix = rotation_matrix
 
         """
@@ -172,9 +172,9 @@ class SelfAttention(BaseAttentionLayer):
 
         self.bias = bias
         if bias == 'pairwise':
-            self.Wpw = nn.Linear(bias_in_units, h)
+            self.Wpw = nn.Linear(bias_in_units, h, bias=True)
         elif bias == 'regular':
-            self.Wb = nn.Linear(indim, h)
+            self.Wb = nn.Linear(indim, h, bias=True)
         
         self.modulator = modulator
         if modulator:
@@ -309,7 +309,7 @@ class FFN(nn.Module):
         self.out_units = indim if out_units==None else out_units
         self.alphabet = alphabet
 
-        self.W1 = nn.Linear(indim, indim*self.mult)
+        self.W1 = nn.Linear(indim, indim*self.mult, bias=True)
         self.W2 = nn.Linear(indim*self.mult, self.out_units, bias=False)
         shape = self.W2.weight.shape
         self.W2.weight = nn.Parameter( 
@@ -363,7 +363,7 @@ class TransBlock(nn.Module):
             units = attention_dict['indim']
             if embed_type == 'preembed':
                 num = attention_dict['indim'] if channel_alpha else 1
-                self.alpha = nn.Parameter(0.1*th.ones(num), requires_grad=True)
+                self.alpha = nn.Parameter(0.1*th.ones(num), requires_grad=False)
                 units = units
             elif embed_type == 'ffnembed':
                 units = units * self.mult
@@ -375,7 +375,7 @@ class TransBlock(nn.Module):
                 raise NotImplementedError("Choose a real embedding option")
         
             assert type(embed_indim) == int
-            self.embed = nn.Linear(embed_indim, units)
+            self.embed = nn.Linear(embed_indim, units, bias=False)
             
         indim = attention_dict['indim']
         self.norm1 = norm(indim, elementwise_affine=elementwise_affine)
@@ -391,10 +391,10 @@ class TransBlock(nn.Module):
         self.ffn = FFN(**ffn_dict)
         
         
-    def forward(self, 
-                x, 
-                kv_feats=None, 
-                embed_feats=None, 
+    def forward(self,
+                x,
+                kv_feats=None,
+                embed_feats=None,
                 spec_mask=None, 
                 seq_mask=None,
                 biastsr=None,
@@ -419,7 +419,7 @@ class TransBlock(nn.Module):
                 bias = bias
                 if self.embed_type == 'preembed_wb':
                     out = weight * out + bias
-                elif self.prenorm & (self.embed_type == 'normembed'): 
+                elif self.prenorm & (self.embed_type == 'normembed'):
                     out = weight * self.norm1(out) + bias
         else:
             if self.prenorm:

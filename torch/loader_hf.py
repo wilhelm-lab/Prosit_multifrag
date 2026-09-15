@@ -36,6 +36,7 @@ def map_fn(
     dont_count = ion_dataframe.query(f'length >= {example["pep_len"]} or charge > {example["charge"]}')['index'].tolist()
     intensity[dont_count] = -1
     example['intensity'] = intensity
+    example['identifier'] = f"{example['raw_file']}|{example['scan']}"
     return example
 
 def collate_fn(batch_list, full=False):
@@ -50,12 +51,14 @@ def collate_fn(batch_list, full=False):
     if use_instrument:
         instrument = th.stack([m['instrument'] for m in batch_list])
     intensity = th.stack([m['intensity'] for m in batch_list])
+    identifier = [m['identifier'] for m in batch_list]
     
     out = {
         'intseq': intseq,
         'charge': charge,
         'ce': ce,
         'intensity': intensity,
+        'identifier': identifier,
     }
     if use_method:
         out['method'] = method

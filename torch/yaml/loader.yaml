@@ -1,5 +1,5 @@
 dataset_path: 
-  train: /cmnfs/data/proteomics/MultiFragmentation/processed/parquet/allinone/archive/try4/*train*0*.parquet
+  train: /cmnfs/data/proteomics/MultiFragmentation/processed/parquet/allinone/archive/try4/*train*.parquet
   val: /cmnfs/data/proteomics/MultiFragmentation/processed/parquet/allinone/archive/try4/*val*parquet
   test: /cmnfs/data/proteomics/MultiFragmentation/processed/parquet/allinone/archive/try4/*test*parquet
 tokenizer: mine
